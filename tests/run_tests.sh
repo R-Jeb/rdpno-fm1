@@ -54,6 +54,8 @@ run "SMK-37 pitch wheel: the bend is back to 0 at rest, however slowly the wheel
 
 $CC -o "$OUT/ota_test" tests/ota_test.c
 run "M-UPGRADE entry (FM-1)" "$OUT/ota_test" build/rdpno.fwsc
+$CC -DFELUCCA_ID='"FM-1_973000302"' -o "$OUT/ota_test_long" tests/ota_test.c
+run "M-UPGRADE entry with RDPNO's long identity: FM-1_973 to the handshake, all of it to HS_FULL" "$OUT/ota_test_long" build/rdpno.fwsc
 head -c 60000 build/rdpno.bin > "$OUT/old_app.bin"
 python3 tools/fm1pkg_make.py "$OUT/old_app.bin" build/loader/ota.bin "$OUT/old.fwsc" >/dev/null
 $CC -o "$OUT/ldr_screen_test" tests/ldr_screen_test.c

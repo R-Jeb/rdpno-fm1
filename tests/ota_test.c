@@ -25,7 +25,9 @@ static int recovery_active;
 #define T_AREA 0xBB000u
 #define T_PARM_ID "ota-" SMK_MODEL "_016"
 #else
-#define FELUCCA_ID "FM-1_900"
+#ifndef FELUCCA_ID
+#define FELUCCA_ID "FM-1_900"                   /* (-DFELUCCA_ID='"FM-1_973000302"': RDPNO's long identity) */
+#endif
 #define T_RECOVERY "FM-1_000"
 #define T_AREA 0xE0000u
 #define T_PARM_ID "ota-FM-1_015"
@@ -194,8 +196,20 @@ int main(int argc, char **argv)
         host_reply(m, 7);
         ota_service();
         bad += check("handshake answered", ident_replies == 1);
-        bad += check("identity frame is " FELUCCA_ID,
-                     ota_msg[2] == 0x11 && !memcmp(ota_msg + 6, FELUCCA_ID, sizeof FELUCCA_ID - 1));
+        {                                       /* the plain handshake: the name, '_' and three digits */
+            static const char ID[] = FELUCCA_ID;
+            uint32_t k = (uint32_t)(strchr(ID, '_') - ID) + 4u;
+            bad += check("identity frame is " FELUCCA_ID ", up to its third digit (M-UPGRADE)",
+                         ota_msg[2] == 0x11 && !memcmp(ota_msg + 6, ID, k) && ota_msg[6 + k] == 0);
+        }
+        {                                       /* HS_FULL: the whole identity; the plain one stops at 3 digits */
+            uint8_t f[8] = {0, 0x59, 0x11, 0, 0, 1, 0x01, 0xFE};
+            host_reply(f, 8);
+            ota_service();
+            bad += check("HS_FULL answered with the whole identity " FELUCCA_ID,
+                         ident_replies == 2 && !memcmp(ota_msg + 6, FELUCCA_ID, sizeof FELUCCA_ID));
+            ident_replies = 1;
+        }
         recovery_active = 1;
         host_reply(m, 7);
         ota_service();
