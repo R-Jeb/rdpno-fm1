@@ -467,6 +467,14 @@ static void rl_screen(void)                     /* a load's screen: drawn when i
 #include "romtest.c"                            /* tools/build.py --romtest: the ROM area test, nothing else */
 #endif
 
+static void saver_show(void)                    /* the start picture, the version in its corner */
+{
+    static const char V[] = "v" APP_VER;
+    uint32_t tw = (uint32_t)text_w(&FONT_S, V);
+    splash_draw();
+    draw_text_box(240u - tw - 8u, 240u - FONT_S.h - 4u, tw + 4u, &FONT_S, V, C_OFF, 1);
+}
+
 static void app_main(void)
 {
     static const uint8_t KNOB[4] = {ENC_KNOB1, ENC_KNOB2, ENC_KNOB3, ENC_KNOB4};
@@ -486,9 +494,9 @@ static void app_main(void)
     rdp_voices = set.voices;
     rdp_side = fx_side;                         /* Space-D on the second core, beside the board's CPU */
 
+#if RDP_ROMTEST
     lcd_fill(0, 0, 240, 240, C_BLACK);
     draw_text_box(0, 100, 240, &FONT_S, APP_NAME "  v" APP_VER, C_ACC, 1);
-#if RDP_ROMTEST
     romtest_main();                             /* (does not return) */
 #endif
 #if RDP_ROMS_IN_FLASH
@@ -497,13 +505,14 @@ static void app_main(void)
 #else
     (void)rdp_open(RDP_PACK, sizeof RDP_PACK);
 #endif
-    if (rdp_init(set.patch)) {                  /* no pack, or a broken one: the screen says so (draw_voice) */
-        draw_text_box(0, 130, 240, &FONT_S, "NO ROMS", C_LED, 1);
+    saver_show();                               /* the start picture while the board starts, and after it */
+    if (rdp_init(set.patch)) {                  /* no pack, or a broken one: the panel says so (draw_voice) */
+        lcd_fill(0, 0, 240, 240, C_BLACK);
     } else {
         rs_frac = 65536u;
         rdp_ready = 1;
+        saver = 1;                              /* (it stays until something is edited) */
     }
-    lcd_fill(0, 0, 240, 240, C_BLACK);
 
     for (;;) {
         uint32_t keys, down, up, rel, b, out_ch = set.ch ? set.ch - 1u : 0u, st, fx_dirty = 0;
@@ -617,7 +626,7 @@ static void app_main(void)
             leds_set = st;
         }
 
-        /* the screen saver: the start picture after two minutes without editing (playing does not count);
+        /* the screen saver: the start picture at power-on and after two minutes without editing (playing does not count);
          * editing brings the panel back at once, on the page of what was edited. The sound goes on. */
         if (touched) {
             t_edit = fm1_ms;
@@ -630,7 +639,7 @@ static void app_main(void)
         } else if (!saver && rdp_npatch && fm1_ms - t_edit > SAVER_MS) {
             saver = 1;
             idle_ok = 1;
-            splash_draw();
+            saver_show();
             idle_ok = 0;
         }
 

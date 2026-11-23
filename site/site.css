@@ -58,5 +58,3 @@ input[type=range]:disabled { cursor: default; opacity: .4; }
 .hero { display: flex; gap: 28px; align-items: flex-end; flex-wrap: wrap-reverse; }   /* (wrap-reverse: flex-end is the top; on a phone the picture goes above) */
 .hero > div { flex: 1 1 360px; min-width: 0; }
 .hero img { flex: none; width: 240px; height: 240px; border-radius: 10px; border: 1px solid var(--line); margin-top: 6px; }
-.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
-img.corner { width: 96px; height: 96px; border-radius: 8px; border: 1px solid var(--line); flex: none; }
