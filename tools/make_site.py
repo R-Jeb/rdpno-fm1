@@ -47,7 +47,7 @@ def main(pkg, version, out):
     pkg, out = Path(pkg), Path(out)
     raw = pkg.read_bytes()
     product = product_of(raw)
-    if product != "FM-1_951":
+    if not re.fullmatch(r"FM-1_973\d{4}", product) or product.endswith("0000"):
         raise SystemExit(f"{pkg}: identity {product!r}: make a release build (tools/build.py --romload --release X.Y)")
     if b"FELUCCA-LOADER-1" not in raw:
         raise SystemExit(f"{pkg}: no update loader in it")
