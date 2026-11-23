@@ -203,7 +203,7 @@ int main(int argc, char **argv)
                          ota_msg[2] == 0x11 && !memcmp(ota_msg + 6, ID, k) && ota_msg[6 + k] == 0);
         }
         {                                       /* HS_FULL: the whole identity; the plain one stops at 3 digits */
-            uint8_t f[8] = {0, 0x59, 0x11, 0, 0, 1, 0x01, 0xFE};
+            uint8_t f[8] = {0, 0x59, 0x11, 1, 0, 0, 0x01, 0xFE};   /* (fm1ota.js HS_FULL, unpacked) */
             host_reply(f, 8);
             ota_service();
             bad += check("HS_FULL answered with the whole identity " FELUCCA_ID,
