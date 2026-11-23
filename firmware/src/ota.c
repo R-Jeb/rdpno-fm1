@@ -3,7 +3,7 @@
 /* M-UPGRADE update entry.
  *
  * The updater talks SysEx (F0 pack7(00 59 cmd len24 body chk) F7):
- *   cmd 0x11  handshake -> we answer our package identity (FELUCCA_ID)
+ *   cmd 0x11  handshake -> our identity's name and three digits; with the body 01 (HS_FULL) the whole of it
  *   F0 22 24 35 7F F7  upgrade -> ota_session(): pull parts of the package
  *     with cmd 0x30 read requests, check them, stage the package's update
  *     loader at 0xE0000 (outside Felucca's store; SMK: 0xBB000), ask 0xE0000000 ("success"),
@@ -139,21 +139,22 @@ static int ota_send_msg(uint32_t cmd, const uint8_t *body, uint32_t n)   /* n <=
     return ota_wire_send(ota_wire, w);
 }
 
-static void ota_reply_identity(void)
+/* the identity: the whole one (FELUCCA_ID: RDPNO's FM-1_973XXYYZZ) to HS_FULL; to the plain handshake only its name,
+ * '_' and three digits ("FM-1_973"), as felucca-bsp's chip/ota.c does: M-UPGRADE 3.11 refuses a longer one */
+static void ota_reply_identity(uint32_t full)
 {
 #ifdef OTA_IDENTITY
     const char *id_text = OTA_IDENTITY;
-    uint8_t id[27];
-    uint32_t i;
-    for (i = 0; i < sizeof id; i++) id[i] = 0;
-    for (i = 0; i < sizeof id && id_text[i]; i++) id[i] = (uint8_t)id_text[i];
 #else
-    static const char ID[] = FELUCCA_ID;         /* loader / unmodified builds */
-    uint8_t id[27];
-    uint32_t i;
-    for (i = 0; i < sizeof id; i++)
-        id[i] = i < sizeof ID - 1u ? (uint8_t)ID[i] : 0;
+    const char *id_text = FELUCCA_ID;           /* loader / unmodified builds */
 #endif
+    uint8_t id[27];
+    uint32_t i, n = sizeof id;
+    for (i = 0; i < sizeof id; i++) id[i] = 0;
+    if (!full)
+        for (i = 0; id_text[i]; i++)
+            if (id_text[i] == '_') { n = i + 4u; break; }
+    for (i = 0; i < n && id_text[i]; i++) id[i] = (uint8_t)id_text[i];
     ota_send_msg(0x11, id, sizeof id);
 }
 
@@ -180,7 +181,9 @@ static void ota_service(void)
 {
     uint32_t d = ota_take();
     if (d == 7u && ota_dec[2] == 0x11)
-        ota_reply_identity();
+        ota_reply_identity(0);
+    else if (d == 8u && ota_dec[2] == 0x11 && ota_dec[6] == 0x01)
+        ota_reply_identity(1);                  /* HS_FULL: the handshake with the body 01 */
 }
 
 /* one read request (3 tries x 5 s); data -> dst */
@@ -206,7 +209,7 @@ static int ota_read(uint32_t addr, uint8_t *dst, uint32_t len)
             if (!d)
                 continue;
             if (d == 7u && ota_dec[2] == 0x11) {
-                ota_reply_identity();
+                ota_reply_identity(0);
                 continue;
             }
             if (d == len + 15u && ota_dec[2] == 0x30 && ota_rd24(ota_dec + 3) == len + 8u &&
