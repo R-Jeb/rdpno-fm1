@@ -43,6 +43,7 @@ static int app_sysex(const uint8_t *p, uint32_t n);
 #define RDP_SPLIT_WAIT() cpu1_wait()
 #include "rdp.c"
 #include "fx.c"
+#include "splash.c"
 #ifndef DINGHY_HOST
 #include "sysex.c"
 #endif
@@ -139,6 +140,9 @@ static int set_ok(void)
 }
 
 #define KEY0 53u                                /* key 0 = F3 */
+#ifndef SAVER_MS
+#define SAVER_MS 120000u                        /* the screen saver: two minutes without editing */
+#endif
 /* At most 10 voices: with the pedal down every key struck keeps one, and 12 (~110 parts) are more than the FM-1
  * computes in time (distortion, and MIDI waits). 8 by default. */
 #define RDP_VOICES_MAX 10u
@@ -470,7 +474,7 @@ static void app_main(void)
     uint32_t prev = 0, k, t_change = 0, dirty = 0, t_load = 0, hold = 0, t_hold = 0, hot = V_NONE;
     uint32_t page_drawn = ~0u, patch_drawn = ~0u, midi_drawn = ~0u, load_drawn = ~0u, rows_drawn[4], leds_set = ~0u;
     uint8_t held[27] = {0};
-    uint32_t lost_seen = 0;
+    uint32_t lost_seen = 0, t_edit = 0, saver = 0, touched;
 #if BOARD_SMK37
     uint8_t ext_note[FM1_NKEY] = {0};
     smk_pad_events = 1;                         /* the pads as events: taken and dropped (no use for them yet) */
@@ -506,6 +510,7 @@ static void app_main(void)
         int32_t oct = (int8_t)set.oct, e;
         uint32_t base = (uint32_t)((int32_t)KEY0 + 12 * oct);
         platform_poll();
+        touched = 0;                            /* edited: a button (not PLAY), a knob, the editor page */
 #if RDP_ROMS_IN_FLASH
         if (rl.active) { rl_screen(); continue; }   /* a load (romload.c): its screen, nothing else */
         if (rl_drawn != ~0u) {                  /* it failed: the panel again (NO ROMS; the page says why) */
@@ -519,6 +524,7 @@ static void app_main(void)
 #ifdef SX_EDITOR
         if (ed_changed) {                       /* the editor page set something: kept 2 s later, shown on its page */
             ed_changed = 0;
+            touched = 1;
             dirty = 1; t_change = fm1_ms;
             if (ed_hot != V_NONE) {
                 for (k = 0; k < PG_N * 4u; k++)
@@ -553,6 +559,7 @@ static void app_main(void)
 #endif
 
         b = fm1_input_edges(&rel);
+        if (b & ~(1u << BTN_PLAY)) touched = 1;
         if (b & (1u << BTN_OCT_DOWN) && oct > -2) { set.oct = (uint8_t)(oct - 1); dirty = 1; t_change = fm1_ms; }
         if (b & (1u << BTN_OCT_UP) && oct < 2) { set.oct = (uint8_t)(oct + 1); dirty = 1; t_change = fm1_ms; }
         if (b & (1u << BTN_PLAY)) { pedal(!sustain); midi_send(0xB0u | out_ch, 64, sustain ? 127u : 0u); }
@@ -564,20 +571,24 @@ static void app_main(void)
             }
         if ((e = fm1_enc_take(ENC_SELECT)) != 0) {
             int32_t pg = ((int32_t)set.page + e) % (int32_t)PG_N;
+            touched = 1;
             set.page = (uint8_t)(pg < 0 ? pg + (int32_t)PG_N : pg);
             hot = V_NONE; dirty = 1; t_change = fm1_ms;
         }
-        if ((e = fm1_enc_take(ENC_PRESETS)) != 0 && rdp_npatch) {
+        if ((e = fm1_enc_take(ENC_PRESETS)) != 0) touched = 1;
+        if (e && rdp_npatch) {
             int32_t p = ((int32_t)set.patch + e) % (int32_t)rdp_npatch;
             want_patch = (uint32_t)(p < 0 ? p + (int32_t)rdp_npatch : p);
         }
         if ((e = fm1_enc_take(ENC_ALGORITHM)) != 0) {
             int32_t c = (int32_t)set.ch + e;
+            touched = 1;
             set.ch = (uint8_t)(c < 0 ? 0 : c > 16 ? 16 : c);
             dirty = 1; t_change = fm1_ms;
         }
         for (k = 0; k < 4u; k++)
             if ((e = fm1_enc_take(KNOB[k])) != 0 && PAGE_ROW[set.page][k] != V_NONE) {
+                touched = 1;
                 hot = PAGE_ROW[set.page][k];
                 val_turn(hot, e);
                 if (hot == V_VOICES) rdp_voices = set.voices;
@@ -606,14 +617,32 @@ static void app_main(void)
             leds_set = st;
         }
 
+        /* the screen saver: the start picture after two minutes without editing (playing does not count);
+         * editing brings the panel back at once, on the page of what was edited. The sound goes on. */
+        if (touched) {
+            t_edit = fm1_ms;
+            if (saver) {
+                saver = 0;
+                lcd_fill(0, 0, 240, 240, C_BLACK);
+                patch_drawn = page_drawn = midi_drawn = load_drawn = ~0u;
+                for (k = 0; k < 4u; k++) rows_drawn[k] = ~0u;
+            }
+        } else if (!saver && rdp_npatch && fm1_ms - t_edit > SAVER_MS) {
+            saver = 1;
+            idle_ok = 1;
+            splash_draw();
+            idle_ok = 0;
+        }
+
         idle_ok = 1;                            /* the drawing below may read MIDI meanwhile (LCD_IDLE) */
+        if (saver) patch_drawn = set.patch;     /* (nothing drawn under the picture; the panel again when it goes) */
         if (set.patch != patch_drawn) { patch_drawn = set.patch; draw_voice(); }
-        if ((set.page | (uint32_t)set.fx.cho_type << 4) != page_drawn) {
+        if (!saver && (set.page | (uint32_t)set.fx.cho_type << 4) != page_drawn) {
             page_drawn = set.page | (uint32_t)set.fx.cho_type << 4;
             draw_page(set.page);
             for (k = 0; k < 4u; k++) rows_drawn[k] = ~0u;
         }
-        for (k = 0; k < 4u; k++) {              /* a row: its value and whether it was the last one turned */
+        for (k = 0; k < 4u && !saver; k++) {    /* a row: its value and whether it was the last one turned */
             uint32_t v = PAGE_ROW[set.page][k];
             st = v == V_NONE ? 0xFFFFu : (uint32_t)*val_ptr(v) | v << 8 | (uint32_t)(v == hot) << 12;
             if (st != rows_drawn[k]) { rows_drawn[k] = st; draw_row(k, v, v == hot); }
@@ -631,7 +660,7 @@ static void app_main(void)
             if (was) pedal(1);                  /* again as it was last heard) */
         }
         if ((st = (uint32_t)(oct + 2) | set.ch << 4 | sustain << 9 | (uint32_t)cpu1_on() << 10 |
-                  (lost_seen > 99u ? 99u : lost_seen) << 11) != midi_drawn) {
+                  (lost_seen > 99u ? 99u : lost_seen) << 11) != midi_drawn && !saver) {
             midi_drawn = st;
             draw_midi(oct, set.ch, sustain, lost_seen);
         }
@@ -641,7 +670,7 @@ static void app_main(void)
             t_load = fm1_ms;
             if (pk >= hold || fm1_ms - t_hold > 2000u) { hold = pk; t_hold = fm1_ms; }
             st = (now | hold << 11 | parts << 22) ^ (uint32_t)(rdp_quiet < 10u) << 31;
-            if (st != load_drawn) { load_drawn = st; draw_load(now, hold, parts); }
+            if (st != load_drawn && !saver) { load_drawn = st; draw_load(now, hold, parts); }
         }
         idle_ok = 0;
 
