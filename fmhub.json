@@ -1,0 +1,12 @@
+{
+  "what": "Roland's SA pianos (MKS-20, Rhodes MK-80): a cycle-exact emulation of their CPU-B board, after rdpiano. No Roland data inside: you load your own ROM dumps from the web page. The MKS-20's EQ, chorus (Space-D or BBD) and tremolo, up to 8 notes, a live web editor.",
+  "author": "R-Jeb",
+  "kinds": [
+    "synth"
+  ],
+  "editor": "https://r-jeb.github.io/rdpno-fm1/edit/",
+  "cheat": "https://r-jeb.github.io/rdpno-fm1/screens/",
+  "image": "site/img/rdpno.jpg",
+  "color": "#5AC8E6",
+  "sounds": "none"
+}
