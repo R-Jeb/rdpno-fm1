@@ -59,7 +59,7 @@ SDK_SHA256 = {
 }
 
 BOARD = "fm1"                       # fm1 (default) or smk37: BOARD env or --board
-BOARD_PREFIX = {"fm1": "FM-1_95", "smk37": "SMK-37 Pro_95"}   # identity: prefix + minor (0: a dev build); RDPNO: 95N
+BOARD_PREFIX = {"fm1": "FM-1_95", "smk37": "SMK-37 Pro_95"}   # identity: prefix + 1 (a release), 0 (a dev build)
 BOARD_DEFS = {"fm1": [], "smk37": ["-DBOARD_SMK37=1"]}
 MODELS = {"pro": "SMK-37 Pro", "elite": "SMK-37 Elite", "mke": "MKE-P37"}   # smk37: one keyboard, three names
 DATA_FAMILY = "RDPNO"               # the SMK store's owner tag (store.h): 1..7 of A-Z 0-9. Your fork: your own
@@ -79,7 +79,7 @@ ROMTEST = False
 # firmware/src/romload.c) into [ROMT_LO, 0x93000). The same small app slot as --romtest; build/rdpno-load.fwsc, or
 # build/rdpno-X.Y.fwsc with --release: the one that can be handed out.
 ROMLOAD = False
-PRODUCT = "FM-1_950"                # RDPNO: 95N (OUR_LOADER in the installer wants FM-1_9NN; Dinghy is 99N)
+PRODUCT = "FM-1_950"                # RDPNO: FM-1_951 for every release (the Firmware Hub's number for it), 950 a dev build
 VERSION = None                      # APP_VER for release builds
 
 
@@ -343,7 +343,7 @@ def mmio_check():
 def main():
     global PRODUCT, VERSION, BOARD, APP_SLOT, ROM_SET, ROMTEST, ROMLOAD
     ap = argparse.ArgumentParser()
-    ap.add_argument("--release", metavar="X.Y", help="release build: identity FM-1_99Y, version string X.Y")
+    ap.add_argument("--release", metavar="X.Y", help="release build: identity FM-1_951, version string X.Y[.Z]")
     ap.add_argument("--board", choices=sorted(BOARD_PREFIX), default=None,
                     help="target board: fm1 (default) or smk37 (default: $BOARD, else fm1)")
     ap.add_argument("--model", choices=sorted(MODELS), default=None,
@@ -372,11 +372,11 @@ def main():
         suffix += "-" + model
     PRODUCT = BOARD_PREFIX[BOARD] + "0"
     name = f"rdpno{suffix}.fwsc"
-    if a.release:                   # one digit each: the identity has room for two (X.Y; a .Z only in the text)
+    if a.release:                   # one digit each; the identity is RDPNO's (FM-1_951), the version only in the text
         m = re.fullmatch(r"(\d)\.(\d)(\.\d)?(-[A-Za-z0-9]+)?", a.release)
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z or X.Y-suffix, one digit each")
-        PRODUCT = BOARD_PREFIX[BOARD] + m[2]
+        PRODUCT = BOARD_PREFIX[BOARD] + "1"   # (unique on the Firmware Hub: 953 is B3 ORGAN's, so no minor in it)
         VERSION = m[1] + "." + m[2] + (m[3] or "")
         name = f"rdpno-{a.release}{suffix}.fwsc"
     fm1pkg_make.SDK = a.sdk
