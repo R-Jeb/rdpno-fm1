@@ -18,9 +18,8 @@ the installer loads them again in the same go. The firmware file is also in the
 [releases](https://github.com/R-Jeb/rdpno-fm1/releases).
 
 > **Status: v0.3, experimental.** Plays on the FM-1 (old and new flash chip). The emulation gives librdpiano's
-> samples bit for bit (`tests/rdp_compare.sh`), on one core or split over two. You can still build RDPNO yourself
-> with the ROMs built in ([Build it yourself](#build-it-yourself)); please do not publish such packages: they contain
-> the ROMs.
+> samples bit for bit (`tests/rdp_compare.sh`), on one core or split over two. To work on RDPNO itself:
+> [Build it yourself](#build-it-yourself).
 
 rdpiano emulates the board these pianos share: the HD6301 CPU running Roland's program and the SA sound chip,
 from silicon analysis. RDPNO runs that emulation inside the FM-1's audio interrupt, reading the ROMs straight
@@ -93,18 +92,36 @@ stereo tremolo are new integer approximations in `fx.c`, not emulations of the M
 
 ## Build it yourself
 
-You need: an FM-1 (or an SMK-37), a computer with **Linux x86-64**, or **Windows with WSL** (Ubuntu from the
-Microsoft Store), and about 1 GB of disk. In a terminal (under Windows: the Ubuntu window):
+**Not needed to play RDPNO:** [install it from the site](https://r-jeb.github.io/rdpno-fm1/install/) and load your
+ROMs there. This is for working on RDPNO itself.
+
+You need a computer with **Linux x86-64**, or **Windows with WSL** (Ubuntu from the Microsoft Store), and about
+1 GB of disk. In a terminal (under Windows: the Ubuntu window):
 
 ```sh
 git clone https://github.com/R-Jeb/rdpno-fm1 ~/rdpno-fm1
 cd ~/rdpno-fm1
-sh tools/setup.sh
+sh tools/setup.sh --no-build          # the packages, the JieLi toolchain and AC79 SDK
+sh build.sh --romload                 # -> build/rdpno-load.fwsc: the site's firmware, no ROMs inside
 ```
 
-`tools/setup.sh` installs the packages (asks for your password once), the JieLi toolchain and JieLi's AC79 SDK,
-fetches the ROM dumps into `../rdpiano/roms` (from [rdpiano](https://github.com/giulioz/rdpiano)'s repository) and
-builds the three firmwares:
+Install `build/rdpno-load.fwsc` with the web installer's local-file install, M-UPGRADE or
+`python3 tools/fm1_install.py build/rdpno-load.fwsc`, then load the ROMs on the
+[load page](https://r-jeb.github.io/rdpno-fm1/load/) (or `python3 tools/fm1_romload.py load --set mks20a`).
+
+**The site** as GitHub publishes it, on your own computer: `sh build.sh --romload --release 0.3`, then
+`python3 tools/make_site.py build/rdpno-0.3.fwsc 0.3 build/site` and `cd build/site && python3 -m http.server 8000`;
+open `http://localhost:8000/` in Chrome (under WSL in Windows' Chrome too). GitHub builds and publishes it from `main`
+(`.github/workflows/pages.yml`, the version in `VERSION`).
+
+**The ROMs** are Roland's: they are not in this repository, nor in anything GitHub builds or publishes.
+
+<details>
+<summary>Builds with the ROMs built in (for development only: never publish them)</summary>
+
+For comparing and measuring, the ROMs can be built into the firmware, one set per build. `sh tools/setup.sh`
+(without `--no-build`) also fetches the ROM dumps into `../rdpiano/roms` (from
+[rdpiano](https://github.com/giulioz/rdpiano)'s repository) and builds them:
 
 | Package | | Voices |
 | --- | --- | --- |
@@ -112,26 +129,12 @@ builds the three firmwares:
 | `build/rdpno-b.fwsc` | RDPNO-B, MKS-20 voices 4-8 | HARPSICHORD, CLAVI, VIBRAPHONE, E-PIANO 1, E-PIANO 2 |
 | `build/rdpno-mk80.fwsc` | RDPNO-80, Rhodes MK-80 | CLASSIC, SPECIAL, BLEND, CONTEMPORARY, A.PIANO 1, A.PIANO 2, CLAVI, VIBRAPHONE |
 
-Under WSL it copies them into Windows' `Downloads` too (or take them from `\\wsl.localhost\Ubuntu\home\<you>\rdpno-fm1\build`
-in the Explorer).
+Later: `./build.sh`, `./build.sh --set mks20b` or `./build.sh --set mk80`. The ROM data are packed for the set by
+themselves (`tools/pack_roms.py`; `RDP_ROMS=/path` if the dumps are elsewhere). These packages contain the ROMs:
+keep them to yourself. GitHub's check builds them with blank ROMs (`RDP_NO_ROMS=1`: that firmware only says
+*NO ROMS: BUILD IT YOURSELF*).
 
-**Install** one of them with M-VAVE's **M-UPGRADE**, or the [FM-1 Firmware Hub](https://thefirmwarehub.com)'s
-local-file install in Chrome or Edge: FM-1 switched on, connected straight to the computer, **every other MIDI
-program and browser tab closed** (Windows lets one program at a time open a MIDI port; else the installer says the
-device "did not answer"). Or from the terminal: `python3 tools/fm1_install.py build/rdpno.fwsc`.
-
-**Later:** `git pull`, then `./build.sh` (RDPNO), `./build.sh --set mks20b` (RDPNO-B) or `./build.sh --set mk80`
-(RDPNO-80). The ROM data are packed for the set by themselves (`tools/pack_roms.py`; `RDP_ROMS=/path` if the dumps
-are elsewhere, `RDP_PATCHES=0,1` for fewer voices if a build does not fit: 20..28 KB a parameter window).
-
-**The site's firmware** (no ROMs inside, they are loaded from the page): `sh build.sh --romload --release 0.3`, the
-site around it: `python3 tools/make_site.py build/rdpno-0.3.fwsc 0.3 build/site` (to try it:
-`cd build/site && python3 -m http.server 8000`, then `http://localhost:8000/` in Chrome). GitHub builds and publishes
-it from `main` (`.github/workflows/pages.yml`, the version in `VERSION`).
-
-**The ROMs:** Roland's. They are not in this repository, nor in anything GitHub builds or publishes: the site's
-firmware takes the player's own, and the check workflow builds the other builds with blank ROMs (`RDP_NO_ROMS=1`:
-that firmware only says *NO ROMS: BUILD IT YOURSELF*). Keep the dumps and your packages with ROMs to yourself.
+</details>
 
 Without an FM-1:
 
