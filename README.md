@@ -17,7 +17,7 @@ makes the ROM pack in the browser, nothing leaves your computer except to the FM
 the installer loads them again in the same go. The firmware file is also in the
 [releases](https://github.com/R-Jeb/rdpno-fm1/releases).
 
-> **Status: v0.3.1, experimental.** Plays on the FM-1 (old and new flash chip). The emulation gives librdpiano's
+> **Status: v0.3.2, experimental.** Plays on the FM-1 (old and new flash chip). The emulation gives librdpiano's
 > samples bit for bit (`tests/rdp_compare.sh`), on one core or split over two. To work on RDPNO itself:
 > [Build it yourself](#build-it-yourself).
 
