@@ -3,25 +3,28 @@
 **Roland's SA pianos (MKS-20; also the Rhodes MK-80) on the M-VAVE FM-1: [rdpiano](https://github.com/giulioz/rdpiano)'s
 emulation of the CPU-B board, ported to the FM-1 on [Dinghy](https://github.com/zvenson/dinghy).**
 
+## ▶ Install, load the ROMs, edit: [r-jeb.github.io/rdpno-fm1](https://r-jeb.github.io/rdpno-fm1/)
+
+| | |
+| --- | --- |
+| **[Install](https://r-jeb.github.io/rdpno-fm1/install/)** | RDPNO onto the FM-1 from the browser (Chrome or Edge, USB), and your ROMs with it |
+| **[Load the ROMs](https://r-jeb.github.io/rdpno-fm1/load/)** | your own dumps: MKS-20 A (Piano 1-3), MKS-20 B (Harpsichord, Clavi, Vibraphone, E-Piano 1, 2) or MK-80 (8 tones) |
+| **[Edit](https://r-jeb.github.io/rdpno-fm1/edit/)** | voice, level, the equalizer with its curve, tremolo, chorus, MIDI, live; setups kept in the browser |
+| **[The screens](https://r-jeb.github.io/rdpno-fm1/screens/)** | what HOME, FX and ENV on the FM-1 show and do |
+
+The firmware holds **no Roland data**: the ROMs are Roland's, so you load **your own dumps** into the FM-1. The page
+makes the ROM pack in the browser, nothing leaves your computer except to the FM-1. A firmware update clears the ROMs;
+the installer loads them again in the same go. The firmware file is also in the
+[releases](https://github.com/R-Jeb/rdpno-fm1/releases).
+
+> **Status: v0.3, experimental.** Plays on the FM-1 (old and new flash chip). The emulation gives librdpiano's
+> samples bit for bit (`tests/rdp_compare.sh`), on one core or split over two. You can still build RDPNO yourself
+> with the ROMs built in ([Build it yourself](#build-it-yourself)); please do not publish such packages: they contain
+> the ROMs.
+
 rdpiano emulates the board these pianos share: the HD6301 CPU running Roland's program and the SA sound chip,
 from silicon analysis. RDPNO runs that emulation inside the FM-1's audio interrupt, reading the ROMs straight
 from flash, and plays it from the keys and MIDI.
-
-> **Status: v0.1, experimental. Plays on the FM-1** (old and new flash chip), in three builds: **RDPNO** (MKS-20 voices 1-3, the
-> pianos), **RDPNO-B** (MKS-20 voices 4-8: harpsichord, clavi, vibraphone, e-piano 1 and 2) and **RDPNO-80** (the
-> Rhodes MK-80's eight tones). The emulation gives librdpiano's samples bit for bit (`tests/rdp_compare.sh`), on
-> one core or split over two.
->
-> **Install it from the browser:** [r-jeb.github.io/rdpno-fm1](https://r-jeb.github.io/rdpno-fm1/) (Chrome or Edge,
-> the FM-1 connected by USB). That firmware holds **no Roland data**: the ROMs are Roland's, so you load **your own
-> dumps** into the FM-1 from the [load page](https://r-jeb.github.io/rdpno-fm1/load/), one set at a time (MKS-20 A,
-> MKS-20 B or MK-80). The page makes the ROM pack in the browser; nothing leaves your computer except to the FM-1. A
-> firmware update clears the ROMs; the installer loads them again in the same go. Everything the panel sets can also be
-> set from the browser, live: the [editor](https://r-jeb.github.io/rdpno-fm1/edit/). What the three pages show:
-> [the screens](https://r-jeb.github.io/rdpno-fm1/screens/).
->
-> You can still build RDPNO yourself with the ROMs built in ([Build it yourself](#build-it-yourself)); please do not
-> publish such packages: they contain the ROMs.
 
 **How many notes:** the voices at 20 kHz (pianos, vibraphone, e-piano 1, the MK-80's Classic, Special, Blend,
 A.Piano 1/2) play 6 to 8 notes clean, also with the pedal; the ones at 32 kHz (harpsichord, clavi, e-piano 2, the
@@ -121,9 +124,14 @@ device "did not answer"). Or from the terminal: `python3 tools/fm1_install.py bu
 (RDPNO-80). The ROM data are packed for the set by themselves (`tools/pack_roms.py`; `RDP_ROMS=/path` if the dumps
 are elsewhere, `RDP_PATCHES=0,1` for fewer voices if a build does not fit: 20..28 KB a parameter window).
 
-**The ROMs:** Roland's. They are not in this repository, nor in anything GitHub builds: its workflow builds with
-blank ROMs (`RDP_NO_ROMS=1`), and that firmware only says *NO ROMS: BUILD IT YOURSELF*. Keep the dumps and your
-packages to yourself.
+**The site's firmware** (no ROMs inside, they are loaded from the page): `sh build.sh --romload --release 0.3`, the
+site around it: `python3 tools/make_site.py build/rdpno-0.3.fwsc 0.3 build/site` (to try it:
+`cd build/site && python3 -m http.server 8000`, then `http://localhost:8000/` in Chrome). GitHub builds and publishes
+it from `main` (`.github/workflows/pages.yml`, the version in `VERSION`).
+
+**The ROMs:** Roland's. They are not in this repository, nor in anything GitHub builds or publishes: the site's
+firmware takes the player's own, and the check workflow builds the other builds with blank ROMs (`RDP_NO_ROMS=1`:
+that firmware only says *NO ROMS: BUILD IT YOURSELF*). Keep the dumps and your packages with ROMs to yourself.
 
 Without an FM-1:
 
