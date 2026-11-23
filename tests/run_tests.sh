@@ -43,6 +43,8 @@ $CC -Ifirmware/src -o "$OUT/romload_test" tests/romload_test.c
 run "ROM loader (romload.c, fake flash): a load as the page sends it, frames twice, the failures, nothing outside" \
     "$OUT/romload_test" "$OUT/fake.pack" "$OUT/fake.frames"
 run "the browser's ROM pack and frames (site/romload.js) = pack_roms.py's and fm1_romload.py's" sh tests/pack_js.sh
+$CC -Ifirmware/src -o "$OUT/inflate_test" tests/inflate_test.c
+run "inflate.c against zlib (stored, fixed, dynamic blocks, 1 KiB window; the start picture)" python3 tests/inflate_test.py "$OUT/inflate" "$OUT/inflate_test"
 $CC -Ifirmware/src -o "$OUT/romtest_test" tests/romtest_test.c
 run "ROM area test (romtest.c, fake flash): write, power cycle, read back; a bad bit found; nothing outside the area" "$OUT/romtest_test"
 $CC -DBOARD_SMK37=1 -Ifirmware/hal -o "$OUT/smk_flash_test" tests/smk_flash_test.c
